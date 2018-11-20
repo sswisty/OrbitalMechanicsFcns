@@ -18,6 +18,9 @@ FUNCTIONS INCLUDED
     * E2M, M2E
 """
 
+# Packages that are useful
+using LinearAlgebra
+
 # Read in all functions from their respective files
 include("anomalytransformations.jl")
 include("OEstruct.jl")
