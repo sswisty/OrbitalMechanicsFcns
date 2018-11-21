@@ -80,7 +80,14 @@ function  ECI2OE(R,V,μ=398600.4418)
     end
 
     # Argument of periapsis
-    ω = acos(dot(N,e_vec)/(n*e));
+    term = dot(N,e_vec)/(n*e)
+    ϵ = 1e-10
+    if abs(term) > 1 # checking precision of values
+        if abs(term)-1 < ϵ
+            if term < 0 term = -1 else term = 1 end
+        end
+    end
+    ω = acos(term)
     if e_vec[3] < 0         # If e(k) is greater than 0 w is less than 180
         ω = 2π - ω;
     end
