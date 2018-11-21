@@ -43,4 +43,5 @@ function E2anom(E,e)
     if E > π
         ν = 2π - ν;
     end
+    return ν
 end

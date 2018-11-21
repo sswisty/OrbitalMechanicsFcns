@@ -21,7 +21,7 @@ STILL TO ADD
     * ECEF2GEOCEN/GEODED
     * SatPropagator
     * Lambert solver ?..
-    
+
     * transit 290 function ...
 
 Look into
@@ -41,3 +41,5 @@ include("OEstruct.jl")
 include("RotMat.jl")
 include("GravitationalForcePropagator.jl")
 include("OE_ECItransformations.jl")
+include("TimeFunctions.jl")
+include("MeanMotionProp.jl")

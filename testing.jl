@@ -22,7 +22,24 @@ for i = 1:length(sol.u)
     ydata[i] = sol.u[i][2]
     zdata[i] = sol.u[i][3]
 end
-plot(xdata,ydata,zdata,xlim=(-8000,8000), ylim=(-8000,8000), zlim=(-8000,8000),
-       title = "Orbit")
+# plot(xdata,ydata,zdata,xlim=(-8000,8000), ylim=(-8000,8000), zlim=(-8000,8000),
+#        title = "Orbit via ODEsolver")
 
 # surface(xdata,ydata,zdata)
+
+t = collect(0:5:86400) # one day, every 5 seconds
+epoch = UT12MJD(11,21,2018,0,0,0)
+Reci,Veci = MeanMotionProp(oe₁,epoch,t/86400)
+
+xdata = zeros(length(Reci),1) # There should be a better way to extract this ..
+ydata = zeros(length(Reci),1)
+zdata = zeros(length(Reci),1)
+
+for i = 1:length(Reci)
+    xdata[i] = Reci[i][1]
+    ydata[i] = Reci[i][2]
+    zdata[i] = Reci[i][3]
+end
+
+plot(xdata,ydata,zdata,xlim=(-8000,8000), ylim=(-8000,8000), zlim=(-8000,8000),
+       title = "Orbit via Mean Motion Prop")
