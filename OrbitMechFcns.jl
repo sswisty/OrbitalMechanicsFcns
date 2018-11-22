@@ -34,6 +34,7 @@ Look into
 using LinearAlgebra
 using DifferentialEquations
 using Plots
+using CSV
 
 # Read in all functions from their respective files
 include("anomalytransformations.jl")
@@ -43,3 +44,5 @@ include("GravitationalForcePropagator.jl")
 include("OE_ECItransformations.jl")
 include("TimeFunctions.jl")
 include("MeanMotionProp.jl")
+include("EarthGroundPlot.jl")
+include("GeocentricConversion.jl")

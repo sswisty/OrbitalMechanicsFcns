@@ -1,6 +1,6 @@
 include("OrbitMechFcns.jl")
 
-oe₁ = OrbitalElementVec(7500,0.015,5*pi/180,pi/6,0,pi/4)
+oe₁ = OrbitalElementVec(7500,0.015,30*pi/180,pi/6,0,pi/4)
 
 R,V = OE2ECI(oe₁)
 
@@ -22,8 +22,8 @@ for i = 1:length(sol.u)
     ydata[i] = sol.u[i][2]
     zdata[i] = sol.u[i][3]
 end
-# plot(xdata,ydata,zdata,xlim=(-8000,8000), ylim=(-8000,8000), zlim=(-8000,8000),
-#        title = "Orbit via ODEsolver")
+plot1 = plot(xdata,ydata,zdata,xlim=(-8000,8000), ylim=(-8000,8000), zlim=(-8000,8000),
+       title = "Orbit via ODEsolver")
 
 # surface(xdata,ydata,zdata)
 
@@ -41,5 +41,15 @@ for i = 1:length(Reci)
     zdata[i] = Reci[i][3]
 end
 
-plot(xdata,ydata,zdata,xlim=(-8000,8000), ylim=(-8000,8000), zlim=(-8000,8000),
+plot2 = plot(xdata,ydata,zdata,xlim=(-8000,8000), ylim=(-8000,8000), zlim=(-8000,8000),
        title = "Orbit via Mean Motion Prop")
+
+display(plot1)
+display(plot2)
+
+
+# Load Earth topo for ground track
+EP = EarthGroundPlot()
+ϕ,λ,h = ECEF2GEO(Reci)
+
+plot!(λ,ϕ)
