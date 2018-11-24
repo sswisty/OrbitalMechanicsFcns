@@ -1,6 +1,6 @@
 include("OrbitMechFcns.jl")
 
-oe₁ = OrbitalElementVec(7500,0.015,30*pi/180,pi/6,0,pi/4)
+oe₁ = OrbitalElementVec(7500,0.015,1*pi/180,pi/6,0,pi/4)
 
 R,V = OE2ECI(oe₁)
 
@@ -50,6 +50,8 @@ display(plot2)
 
 # Load Earth topo for ground track
 EP = EarthGroundPlot()
-ϕ,λ,h = ECEF2GEO(Reci)
+GMST = MJD2GMST(epoch.+t/86400)
+Recef,Vecef = ECI2ECEF(Reci,Veci,GMST)
+ϕ,λ,h = ECEF2GEO(Recef)
 
 plot!(λ,ϕ)

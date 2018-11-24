@@ -1,4 +1,12 @@
 
+function ECI2ECEF(R,V,θ)
+    Recef = rotz.(-θ).*R
+    Vecef = rotz.(-θ).*V
+
+    return Recef,Vecef
+end
+
+
 function ECEF2GEO(R,rₑ=6378.137)
     #   Turn a position vector (in ECEF) into latitude and longitude
     #   Input

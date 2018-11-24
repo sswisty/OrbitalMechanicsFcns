@@ -10,6 +10,6 @@ function EarthGroundPlot()
         end
     end
     mapvals = [data[:, 181:360] data[:, 1:180]]
-    plt = contour(-180:179, -90:89, mapvals; levels=0:1)
+    plt = contour(-180:179, -90:89, mapvals; levels=0:1,legend=false)
     return plt
 end
