@@ -18,7 +18,7 @@ function ECEF2GEO(R,rₑ=6378.137)
     #       h - Altitude [km]
     r = norm.(R);
     rx,ry,rz,h = [],[],[],[]
-    for vect in Reci
+    for vect in R
         push!(rx,vect[1])
         push!(ry,vect[2])
         push!(rz,vect[3])

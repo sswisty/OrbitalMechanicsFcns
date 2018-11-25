@@ -1,8 +1,8 @@
 
 
 function EarthGroundPlot()
-    # topo = CSV.read("/Users/SSwisty/Documents/Julia/OrbitalMechanics/topo.csv",header=false)
-    topo = CSV.read("D:/Documents/Julia/OrbitalMechanicsFcns/topo.csv",header=false)
+    topo = CSV.read("/Users/SSwisty/Documents/Julia/OrbitalMechanics/topo.csv",header=false)
+    # topo = CSV.read("D:/Documents/Julia/OrbitalMechanicsFcns/topo.csv",header=false)
     n,m = size(topo)
     data =zeros(n,m)
     for i = 1:n
