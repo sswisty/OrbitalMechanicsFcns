@@ -4,8 +4,8 @@ Tranisit
 All angles are in radians except for latitudes and longitudes
 
 =#
-include("OrbitMechFcns.jl")
-
+include("OrbitMechFcns.jl") # Hopefully this will be a package soon!
+using LsqFit
 
 # Define constants
 μ = 398600.441      #
@@ -15,7 +15,7 @@ J₂ = 1.0826267e-3   # Oblatness
 # ⏰ = UT12MJD(11,22,2018,0,0,0)
 ⏰ = UT12MJD(10,7,2018,0,0,0)
 # tstart = .0215*86400
-tstart = 0
+tstart = 0 # This should always be zero! Otherwise you miss the propagation from epoch to tstart!
 # tstop = 2*60*60 # two hours
 tstop = .03*86400
 dt = 2 # [sec] step size
@@ -83,3 +83,33 @@ viz = findall(Alt.>0)
 EP = EarthGroundPlot()
 plot!([λground λground],[ϕground ϕground],markershape=:star5,markersize=3)
 plot!(λ[viz],ϕ[viz])
+
+"""
+Here are the functions converting the relative position into the relative
+velocities and doppler curve
+"""
+
+# Combine the ECEF position and velocities into one vector
+X = []
+for i = 1:length(Rₓ)
+    push!(X,hcat(Rₓ[i]',Vₓ[i]'))
+end
+
+function GetRelVel(X,P)
+    H = []
+    for vect in X
+        val = (vect[1:3]-P)'*vect[4:6]/sqrt((vect[1:3]-P)'*(vect[1:3]-P))
+        push!(H,val)
+    end
+    return H
+end
+
+@. model(x,p) = (x[1:3].-p)'.*x[4:6]./sqrt.((x[1:3].-p)'.*(x[1:3].-p))
+
+Rgs = rₑ*[cosd(ϕground)*cosd(λground);cosd(ϕground)*sind(λground);sind(ϕground)]
+
+testdata = GetRelVel(X,Rgs)
+p0 = [rₑ,0,0]
+fit = curve_fit(model, X, testdata, p0)
+
+estPos = fit.param
