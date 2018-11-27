@@ -6,6 +6,7 @@ All angles are in radians except for latitudes and longitudes
 =#
 include("OrbitMechFcns.jl") # Hopefully this will be a package soon!
 using LsqFit
+using Random
 
 # Define constants
 μ = 398600.441      #
@@ -83,7 +84,7 @@ viz = findall(Alt.>0)
 EP = EarthGroundPlot()
 plot!([λground λground],[ϕground ϕground],markershape=:star5,markersize=3)
 plot!(λ[viz],ϕ[viz])
-
+display(EP)
 """
 Here are the functions converting the relative position into the relative
 velocities and doppler curve
@@ -95,9 +96,9 @@ for i = 1:length(Rₓ)
     push!(X,hcat(Rₓ[i]',Vₓ[i]'))
 end
 Xviz = X[viz]
-XX = vcat(Xviz...)
+XX = vcat(Xviz...) # This makes the array of vectors just an array
 
-function GetRelVel(X,P)
+function GetRelVel(X,P) # But this doesnt work with curve_fit
     H = []
     for vect in X
         val = (vect[1:3]-P)'*vect[4:6]/sqrt((vect[1:3]-P)'*(vect[1:3]-P))
@@ -105,7 +106,7 @@ function GetRelVel(X,P)
     end
     return H
 end
-function LSQfun(R,P)
+function LSQfun(R,P) # THIS ONE WORKS !!!!!!
     x = [r[1] for r in R]
     y = [r[2] for r in R]
     z = [r[3] for r in R]
@@ -115,18 +116,65 @@ function LSQfun(R,P)
 
     top = ((x.-P[1]).*u .+ (y.-P[2]).*v .+ (z.-P[3]).*w)
     bottom = sqrt.((x.-P[1]).^2 .+ (y.-P[2]).^2 .+ (z.-P[3]).^2)
-    h = top./bottom
+    rv = top./bottom
+
+    c = 299792458
+    f0 = 400
+    h = f0.*(1 .+ -(1000 .* rv)./c)
     return h
 end
-#
-# @. M3(x,p) = ((x[1]-p[1])*x[4]+(x[2]-p[2])*x[5]+(x[3]-p[3])*x[6])/sqrt((x[1]-p[1])^2+(x[2]-p[2])^2+(x[3]-p[3])^2)
-# @. model(x,p) = dot((x[1:3]-p),x[4:6])/sqrt(dot((x[1:3]-p),(x[1:3]-p)))
-# @. M2(X,P) = diag((X[1:3]-P)'*X[4:6])./sqrt(diag((X[1:3]-P)'*(X[1:3]-P)))
-Rgs = rₑ*[cosd(ϕground)*cosd(λground);cosd(ϕground)*sind(λground);sind(ϕground)]
 
-testdata = GetRelVel(X,Rgs)
-testdata2 = LSQfun(Xviz,Rgs)
-p0 = [rₑ,0,0]
+function LSQfunoffset(R,P) # THIS ONE WORKS !!!!!!
+    x = [r[1] for r in R]
+    y = [r[2] for r in R]
+    z = [r[3] for r in R]
+    u = [r[4] for r in R]
+    v = [r[5] for r in R]
+    w = [r[6] for r in R]
+
+    top = ((x.-P[1]).*u .+ (y.-P[2]).*v .+ (z.-P[3]).*w)
+    bottom = sqrt.((x.-P[1]).^2 .+ (y.-P[2]).^2 .+ (z.-P[3]).^2)
+    rv = top./bottom
+
+    c = 299792458
+    f0 = 400
+    h = f0.*(1 .+ -(1000 .* rv)./c) .+ P[4]
+    return h
+end
+
+Rgs = rₑ*[cosd(ϕground)*cosd(λground);cosd(ϕground)*sind(λground);sind(ϕground)]
+freqoff = 1
+# testdata = GetRelVel(X,Rgs)
+Random.seed!(1)
+noise = .001*randn(length(Xviz))
+
+P = [Rgs[1],Rgs[2],Rgs[3],freqoff]
+
+testdata2 = LSQfun(Xviz,P) + .1*noise
+p0 = [rₑ,0,0,0]
 fit = curve_fit(LSQfun, Xviz, testdata2, p0)
 
-estPos = fit.param
+estPos = fit.param[1:3]
+
+err = abs.(Rgs-estPos)
+
+freqplot = plot(testdata2,label="Data")
+plot!(freqplot,LSQfun(Xviz,fit.param),label="Estimate")
+plot!(freqplot,LSQfun(Xviz,P),label="True")
+display(freqplot)
+
+
+ϕest,λest,hest = ECEF2GEO([estPos])
+
+EP2 = EarthGroundPlot()
+plot!(EP2,[λground λground],[ϕground ϕground],markershape=:star5,markersize=3,label="True")
+plot!(EP2,[λest λest],[ϕest ϕest],markershape=:star6,markersize=3,label="Estimate")
+plot!(EP2,λ[viz],ϕ[viz])
+display(EP2)
+
+# Turn function into frequency dependent
+# Add bias offset
+# Try a moving base
+#   break into smaller solves?
+#   try estimating a velocity?
+# Fisher information ...
