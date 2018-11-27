@@ -94,6 +94,8 @@ X = []
 for i = 1:length(Rₓ)
     push!(X,hcat(Rₓ[i]',Vₓ[i]'))
 end
+Xviz = X[viz]
+XX = vcat(Xviz...)
 
 function GetRelVel(X,P)
     H = []
@@ -103,13 +105,28 @@ function GetRelVel(X,P)
     end
     return H
 end
+function LSQfun(R,P)
+    x = [r[1] for r in R]
+    y = [r[2] for r in R]
+    z = [r[3] for r in R]
+    u = [r[4] for r in R]
+    v = [r[5] for r in R]
+    w = [r[6] for r in R]
 
-@. model(x,p) = (x[1:3].-p)'.*x[4:6]./sqrt.((x[1:3].-p)'.*(x[1:3].-p))
-
+    top = ((x.-P[1]).*u .+ (y.-P[2]).*v .+ (z.-P[3]).*w)
+    bottom = sqrt.((x.-P[1]).^2 .+ (y.-P[2]).^2 .+ (z.-P[3]).^2)
+    h = top./bottom
+    return h
+end
+#
+# @. M3(x,p) = ((x[1]-p[1])*x[4]+(x[2]-p[2])*x[5]+(x[3]-p[3])*x[6])/sqrt((x[1]-p[1])^2+(x[2]-p[2])^2+(x[3]-p[3])^2)
+# @. model(x,p) = dot((x[1:3]-p),x[4:6])/sqrt(dot((x[1:3]-p),(x[1:3]-p)))
+# @. M2(X,P) = diag((X[1:3]-P)'*X[4:6])./sqrt(diag((X[1:3]-P)'*(X[1:3]-P)))
 Rgs = rₑ*[cosd(ϕground)*cosd(λground);cosd(ϕground)*sind(λground);sind(ϕground)]
 
 testdata = GetRelVel(X,Rgs)
+testdata2 = LSQfun(Xviz,Rgs)
 p0 = [rₑ,0,0]
-fit = curve_fit(model, X, testdata, p0)
+fit = curve_fit(LSQfun, Xviz, testdata2, p0)
 
 estPos = fit.param
