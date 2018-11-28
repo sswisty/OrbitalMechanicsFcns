@@ -28,3 +28,9 @@ function ECEF2GEO(R,rₑ=6378.137)
     λ = atan.(ry,rx)*180/π
     return ϕ,λ,h
 end
+
+function LatLong2ECEF(ϕ,λ,rₑ=6378.137)
+    # Note: Lat/Long are in degrees
+    R = rₑ*[cosd(ϕ)*cosd(λ);cosd(ϕ)*sind(λ);sind(ϕ)]
+    return R
+end
