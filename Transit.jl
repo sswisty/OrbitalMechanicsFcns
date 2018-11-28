@@ -84,7 +84,7 @@ viz = findall(Alt.>0)
 EP = EarthGroundPlot()
 plot!([λground λground],[ϕground ϕground],markershape=:star5,markersize=3)
 plot!(λ[viz],ϕ[viz])
-display(EP)
+# display(EP)
 """
 Here are the functions converting the relative position into the relative
 velocities and doppler curve
@@ -97,6 +97,9 @@ for i = 1:length(Rₓ)
 end
 Xviz = X[viz]
 XX = vcat(Xviz...) # This makes the array of vectors just an array
+
+# Make an initial guess that is under sat at start of visible section
+IG = Xviz[1][1:3]
 
 function GetRelVel(X,P) # But this doesnt work with curve_fit
     H = []
@@ -124,7 +127,7 @@ function LSQfun(R,P) # THIS ONE WORKS !!!!!!
     return h
 end
 
-function LSQfunoffset(R,P) # THIS ONE WORKS !!!!!!
+function LSQfunoffset(R,P) # the offset makes it harder to guess the true location
     x = [r[1] for r in R]
     y = [r[2] for r in R]
     z = [r[3] for r in R]
@@ -132,39 +135,50 @@ function LSQfunoffset(R,P) # THIS ONE WORKS !!!!!!
     v = [r[5] for r in R]
     w = [r[6] for r in R]
 
-    top = ((x.-P[1]).*u .+ (y.-P[2]).*v .+ (z.-P[3]).*w)
-    bottom = sqrt.((x.-P[1]).^2 .+ (y.-P[2]).^2 .+ (z.-P[3]).^2)
+    xg,yg,zg,f0 = P
+
+    top = ((x.-xg).*u .+ (y.-yg).*v .+ (z.-zg).*w)
+    bottom = sqrt.((x.-xg).^2 .+ (y.-yg).^2 .+ (z.-zg).^2)
     rv = top./bottom
 
     c = 299792458
-    f0 = 400
-    h = f0.*(1 .+ -(1000 .* rv)./c) .+ P[4]
+    # f0 = 400
+    h = f0.*(1 .+ -(1000 .* rv)./c) .+ 0
     return h
 end
 
-Rgs = rₑ*[cosd(ϕground)*cosd(λground);cosd(ϕground)*sind(λground);sind(ϕground)]
-freqoff = 1
+Rgs = LatLong2ECEF(ϕground,λground)
+freqoff = 5
+freq = 400
 # testdata = GetRelVel(X,Rgs)
-Random.seed!(1)
+Random.seed!(2)
 noise = .001*randn(length(Xviz))
 
-P = [Rgs[1],Rgs[2],Rgs[3],freqoff]
+P = [Rgs[1],Rgs[2],Rgs[3],freq]
 
-testdata2 = LSQfun(Xviz,P) + .1*noise
-p0 = [rₑ,0,0,0]
-fit = curve_fit(LSQfun, Xviz, testdata2, p0)
+testdata = LSQfun(Xviz,P) + .1*noise
+testdata2 = LSQfunoffset(Xviz,P) + .1*noise
+# p0 = [IG[1],IG[2],IG[3],0]
+p0 = [0.0,0.0,0.0,400.0]
+# p0 = P
+fit = curve_fit(LSQfun, Xviz, testdata, p0)
+fit2 = curve_fit(LSQfunoffset, Xviz, testdata2, p0)
 
 estPos = fit.param[1:3]
+estPos2 = fit2.param[1:3]
 
 err = abs.(Rgs-estPos)
 
+d1 = LSQfunoffset(Xviz,fit2.param)
+d2 = LSQfunoffset(Xviz,P)
+
 freqplot = plot(testdata2,label="Data")
-plot!(freqplot,LSQfun(Xviz,fit.param),label="Estimate")
-plot!(freqplot,LSQfun(Xviz,P),label="True")
+plot!(freqplot,LSQfunoffset(Xviz,fit2.param),label="Estimate")
+plot!(freqplot,LSQfunoffset(Xviz,P),label="True")
 display(freqplot)
 
 
-ϕest,λest,hest = ECEF2GEO([estPos])
+ϕest,λest,hest = ECEF2GEO([estPos2])
 
 EP2 = EarthGroundPlot()
 plot!(EP2,[λground λground],[ϕground ϕground],markershape=:star5,markersize=3,label="True")
@@ -173,8 +187,71 @@ plot!(EP2,λ[viz],ϕ[viz])
 display(EP2)
 
 # Turn function into frequency dependent
-# Add bias offset
+# Add bias offset - gets wrong side of passs ...
 # Try a moving base
 #   break into smaller solves?
 #   try estimating a velocity?
 # Fisher information ...
+
+
+# TEST
+# data1 = LSQfun(Xviz,estPos)
+# data2 = LSQfun(Xviz,estPos2)
+#
+# testplt = plot(data1,label="Ture Curve")
+# plot!(testplt,data2,label="Est CUrve")
+# display(testplt)
+
+"""
+MOVING TAG
+These functions deal with a moving tag
+"""
+# Given an initial lat/long and a final lat/long this gives the ECEF coordinates
+# over the span defined by tvec
+function GroundMotion(ϕstart,λstart,ϕend,λend,tvec)
+    R = []
+    ϕ = range(ϕstart, stop = ϕend, length = length(tvec))
+    λ = range(λstart, stop = λend, length = length(tvec))
+    for i = 1:length(tvec)
+        push!(R,LatLong2ECEF(ϕ[i],λ[i]))
+    end
+    return R,ϕ,λ
+end
+
+# This gives the doppler curve
+function MovingTag(X,V,P)
+    c = 299792458
+    f0 = 400
+    h = zeros(length(X))
+    for i = 1:length(X)
+        rv = (X[i]-P[i])'*V[i]/sqrt((X[i]-P[i])'*(X[i]-P[i]))
+        h[i] = f0*(1 + -(1000 * rv)/c)
+    end
+    return h
+end
+
+
+# Create a moving tag and find satellite visible times
+Rgs2,ϕtag,λtag = GroundMotion(ϕground,λground,ϕground+5,λground+5,ECIsol.t)
+Rsat2 = GroundRange(Rₓ,ϕtag,λtag)
+Az2,Alt2 = SatAzAlt(Rsat2)
+viz2 = findall(Alt2.>0)
+
+realdata =  MovingTag(Rₓ[viz2],Vₓ[viz2],Rgs2[viz2])
+# plot(realdata)
+Xviz2 = X[viz2]
+movingfit = curve_fit(LSQfun, Xviz2, realdata, [0.0,0.0,0.0])
+movPos = movingfit.param
+ϕmov,λmov = ECEF2GEO([movPos])
+
+moverr = Rgs2 .- [movPos]
+
+EP3 = EarthGroundPlot()
+plot!(EP3, λtag, ϕtag,label="Tag motion",legend=true)
+plot!(EP3,[λmov],[ϕmov],markershape=:star6,markersize=3,label="Estimate")
+display(EP3)
+
+estdata = LSQfun(Xviz2,movPos)
+
+plot(realdata,label="real data")
+plot!(estdata,label="estimated")
