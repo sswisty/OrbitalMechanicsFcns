@@ -240,18 +240,36 @@ viz2 = findall(Alt2.>0)
 realdata =  MovingTag(Rₓ[viz2],Vₓ[viz2],Rgs2[viz2])
 # plot(realdata)
 Xviz2 = X[viz2]
-movingfit = curve_fit(LSQfun, Xviz2, realdata, [0.0,0.0,0.0])
-movPos = movingfit.param
-ϕmov,λmov = ECEF2GEO([movPos])
+n = length(Xviz2)
+bins = 5
+valperbin = floor(n/bins)
+partition(x, n) = [x[i:min(i+n-1,length(x))] for i in 1:n:length(x)]
 
-moverr = Rgs2 .- [movPos]
+Xsplit = partition(Xviz2,Int(valperbin))
+datasplit = partition(realdata,Int(valperbin))
+ϕmov,λmov = [],[]
+movPos = []
+for i = 1:bins
+    movingfit = curve_fit(LSQfun, Xsplit[i], datasplit[i], [0.0,0.0,0.0])
+    movpos = movingfit.param
+    # moverr = Rgs2 .- [movPos]
+    # @show moverr
+    ϕm,λm = ECEF2GEO([movpos])
+    push!(ϕmov,ϕm)
+    push!(λmov,λm)
+    push!(movPos,movpos)
+end
+
+
 
 EP3 = EarthGroundPlot()
 plot!(EP3, λtag, ϕtag,label="Tag motion",legend=true)
-plot!(EP3,[λmov],[ϕmov],markershape=:star6,markersize=3,label="Estimate")
+plot!(EP3,λmov,ϕmov,markershape=:star6,markersize=3,label="Estimate")
 display(EP3)
 
+# make the data plot piecewise...
 estdata = LSQfun(Xviz2,movPos)
 
-plot(realdata,label="real data")
-plot!(estdata,label="estimated")
+p3 = plot(realdata,label="real data")
+plot!(p3,estdata,label="estimated")
+display(p3)
