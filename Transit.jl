@@ -7,6 +7,7 @@ All angles are in radians except for latitudes and longitudes
 include("OrbitMechFcns.jl") # Hopefully this will be a package soon!
 using LsqFit
 using Random
+using ForwardDiff
 
 # Define constants
 μ = 398600.441      #
@@ -241,7 +242,7 @@ realdata =  MovingTag(Rₓ[viz2],Vₓ[viz2],Rgs2[viz2])
 # plot(realdata)
 Xviz2 = X[viz2]
 n = length(Xviz2)
-bins = 5
+bins = 4
 valperbin = floor(n/bins)
 partition(x, n) = [x[i:min(i+n-1,length(x))] for i in 1:n:length(x)]
 
@@ -268,8 +269,54 @@ plot!(EP3,λmov,ϕmov,markershape=:star6,markersize=3,label="Estimate")
 display(EP3)
 
 # make the data plot piecewise...
-estdata = LSQfun(Xviz2,movPos)
-
 p3 = plot(realdata,label="real data")
-plot!(p3,estdata,label="estimated")
+for i = 1:bins
+    estdata = LSQfun(Xviz2,movPos[i])
+    plot!(p3,estdata,label="estimated")
+end
 display(p3)
+
+
+# CALCULATE GRADIENT FOR FISHER INFORMATION
+function GetSignal(X::Vector) # need one input for ForwardDiff
+    x = X[1:6]
+    p = X[7:9]
+
+    rv = (x[1:3]-p)'*x[4:6]/sqrt((x[1:3]-p)'*(x[1:3]-p))
+    f0 = 400
+    c = 299792458
+    f = f0*(1 + -(1000 * rv)/c)
+    return f
+end
+
+val = [Xviz[1]';estPos]
+
+fᵢ = GetSignal(val)
+
+g1 = x -> ForwardDiff.gradient(GetSignal,x)
+FI1 = []
+for vect in Xviz
+    val = [vect';estPos]
+    grad = g1(val)
+    push!(FI1,grad)
+end
+
+function OnePointDoppler(p)
+        rv = (XX[1:3]-p)'*XX[4:6]/sqrt((XX[1:3]-p)'*(XX[1:3]-p))
+        f0 = 400
+        c = 299792458
+        f = f0*(1 + -(1000 * rv)/c)
+        return f
+end
+
+g = x -> ForwardDiff.gradient(OnePointDoppler,x)
+FI = []
+fi_tot = [0.0, 0.0, 0.0]
+for vect in Xviz
+    XX = vect
+    grad = g(estPos)
+    global fi_tot += grad
+    push!(FI,grad)
+end
+yvar = 1.0;
+FImat = fi_tot*yvar*fi_tot';
