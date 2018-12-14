@@ -320,3 +320,21 @@ for vect in Xviz
 end
 yvar = 1.0;
 FImat = fi_tot*yvar*fi_tot';
+
+function OnePointDopplerFreq(P)
+    p = P[1:3]
+    rv = (XX[1:3]-p)'*XX[4:6]/sqrt((XX[1:3]-p)'*(XX[1:3]-p))
+    f0 = P[4]
+    c = 299792458
+    f = f0*(1 + -(1000 * rv)/c)
+    return f
+end
+g2 = x -> ForwardDiff.gradient(OnePointDopplerFreq,x)
+fi_tot2 = [0.0, 0.0, 0.0, 0.0]
+for vect in Xviz
+    XX = vect
+    grad = g2(fit2.param)
+    global fi_tot2 += grad
+    push!(FI,grad)
+end
+FImat2 = fi_tot2*yvar*fi_tot2';
