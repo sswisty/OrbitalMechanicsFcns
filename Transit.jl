@@ -324,16 +324,17 @@ FImat = fi_tot*yvar*fi_tot';
 function OnePointDopplerFreq(P)
     p = P[1:3]
     rv = (XX[1:3]-p)'*XX[4:6]/sqrt((XX[1:3]-p)'*(XX[1:3]-p))
-    f0 = P[4]
+    f0 = 400
     c = 299792458
-    f = f0*(1 + -(1000 * rv)/c)
+    f = f0*(1 + -(1000 * rv)/c) + P[4]
     return f
 end
 g2 = x -> ForwardDiff.gradient(OnePointDopplerFreq,x)
 fi_tot2 = [0.0, 0.0, 0.0, 0.0]
+testing = [-1677.13, -4755.17, 3868.69, 0.1]
 for vect in Xviz
     XX = vect
-    grad = g2(fit2.param)
+    grad = g2(testing)
     global fi_tot2 += grad
     push!(FI,grad)
 end
